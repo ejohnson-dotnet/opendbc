@@ -3,6 +3,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from opendbc.car.honda.values import HondaFlags
+
 NUM_INDICES = 10
 OFFSETS_PER_INDEX = 4
 NUM_PTS = NUM_INDICES * OFFSETS_PER_INDEX  # 40 lateral offsets, near->far
@@ -114,6 +116,14 @@ def canfd_lane_offsets(dash_lane) -> list[int]:
     return CANFD_IDLE_OFFSETS
   n_valid = canfd_lane_length(dash_lane)
   return list(dash_lane.offsets[:n_valid]) + [OFFSET_UNAVAILABLE] * (NUM_PTS - n_valid)
+
+
+def canfd_lane_render_allowed(CP, CC, CS) -> bool:
+  """CAN FD lane-path/HUD look-alikes are allowed when openpilot owns the lane draw, even if ACC
+  remains active with the stock radar still on the bus. Once the relay is open, the camera no longer
+  sees radar traffic, so the OP lane draw can keep rendering while vehicle ACC remains engaged."""
+  return bool(CP.flags & HondaFlags.BOSCH_CANFD and
+              (CP.openpilotLongitudinalControl or (CC.latActive and CS.canfd_relay_open)))
 
 
 def create_lane_path(packer, bus, offsets, mux):

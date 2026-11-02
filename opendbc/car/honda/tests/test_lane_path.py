@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import numpy as np
 
 from opendbc.car.honda import lane_path
+from opendbc.car.honda.values import HondaFlags
 
 
 def model_at(center_y):
@@ -104,6 +105,26 @@ class TestLanePathGain(unittest.TestCase):
     fitter = lane_path.LanePathFitter()
     dl = fitter.update(model_at(-2.0), V_EGO, 0.0, canfd=True)
     assert dl.offsets == lane_path.encode_lane_path(*_lane_xy(-2.0), canfd=True)
+
+
+class TestCanfdLaneRender(unittest.TestCase):
+  def test_lka_with_relay_open_keeps_dash_rendering(self):
+    cp = SimpleNamespace(flags=HondaFlags.BOSCH_CANFD, openpilotLongitudinalControl=False)
+    cc = SimpleNamespace(latActive=True)
+    cs = SimpleNamespace(canfd_relay_open=True)
+    assert lane_path.canfd_lane_render_allowed(cp, cc, cs)
+
+  def test_longitudinal_control_still_renders(self):
+    cp = SimpleNamespace(flags=HondaFlags.BOSCH_CANFD, openpilotLongitudinalControl=True)
+    cc = SimpleNamespace(latActive=False)
+    cs = SimpleNamespace(canfd_relay_open=False)
+    assert lane_path.canfd_lane_render_allowed(cp, cc, cs)
+
+  def test_relay_closed_blocks_render_without_longitudinal_control(self):
+    cp = SimpleNamespace(flags=HondaFlags.BOSCH_CANFD, openpilotLongitudinalControl=False)
+    cc = SimpleNamespace(latActive=True)
+    cs = SimpleNamespace(canfd_relay_open=False)
+    assert not lane_path.canfd_lane_render_allowed(cp, cc, cs)
 
 
 if __name__ == "__main__":

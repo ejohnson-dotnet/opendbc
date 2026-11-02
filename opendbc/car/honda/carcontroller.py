@@ -657,9 +657,10 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
     # open relay, so they must be sent explicitly on both buses. Each message is packed exactly once
     # so the packer's counter/checksum only advance once per cycle, then the identical bytes are
     # mirrored onto both buses (re-packing would double-increment the counter and desync the buses).
-    # While the stock radar is still transmitting (drive start, before the deferred disable above has
-    # silenced it), it authors all of these itself: sending look-alikes too would double them up.
-    if (self.CP.flags & HondaFlags.BOSCH_CANFD) and self.CP.openpilotLongitudinalControl and not CS.stock_acc_alive:
+    # On CAN FD, the radar fits a short-lived live-ACC state machine: once the relay is confirmed open,
+    # the lane-path/HUD look-alikes can keep rendering even while ACC remains active, so lateral-only
+    # control does not blank the green dashboard lanes.
+    if (self.CP.flags & HondaFlags.BOSCH_CANFD) and lane_path.canfd_lane_render_allowed(self.CP, CC, CS):
       if CC.enabled and not self.last_acc_enabled:
         self.radar_hud_pulse = 30  # ~3 s at 10 Hz, matching the stock 2-6 s engage burst
       self.last_acc_enabled = CC.enabled
@@ -1307,12 +1308,11 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
           if not self.CP_SP.enableGasInterceptor:
             self.gas = pcm_accel / self.params.NIDEC_GAS_MAX
 
-    # Render OP's lane and lead car on the dash. On CAN FD these are radar look-alikes that only exist
-    # (and are only allowed by panda safety) when the radar is disabled, i.e. openpilot longitudinal;
-    # in stock ACC the real radar still owns LANE_PATH/HUD_OBJECTS, so don't author them.
+    # Render OP's lane and lead car on the dash. On CAN FD the dash only accepts these radar look-alikes
+    # once the radar relay is open, which allows lateral-only control to keep the green lane lines visible
+    # while ACC remains active without colliding with the stock radar stream.
     if ((self.frame % 2 == 0 and self.CP.flags & HondaFlags.BOSCH_RADARLESS) or
-        (CS.radar_50hz_tick and self.CP.flags & HondaFlags.BOSCH_CANFD and self.CP.openpilotLongitudinalControl
-         and not CS.stock_acc_alive)):
+        (CS.radar_50hz_tick and lane_path.canfd_lane_render_allowed(self.CP, CC, CS))):
       leads = hud_objects.leads_from_model(self.model, CS.out.vEgo)
       lead = leads[0]
       lead_d = lead.dRel if lead.status else 0.0  # extend the lane out to the lead (0 = no lead)
