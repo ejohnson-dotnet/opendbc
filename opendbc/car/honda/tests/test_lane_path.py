@@ -108,21 +108,27 @@ class TestLanePathGain(unittest.TestCase):
 
 
 class TestCanfdLaneRender(unittest.TestCase):
+  def test_lka_enabled_keeps_dash_rendering_even_with_acc(self):
+    cp = SimpleNamespace(flags=HondaFlags.BOSCH_CANFD, openpilotLongitudinalControl=False)
+    cc = SimpleNamespace(enabled=True, latActive=False)
+    cs = SimpleNamespace(canfd_relay_open=False)
+    assert lane_path.canfd_lane_render_allowed(cp, cc, cs)
+
   def test_lka_with_relay_open_keeps_dash_rendering(self):
     cp = SimpleNamespace(flags=HondaFlags.BOSCH_CANFD, openpilotLongitudinalControl=False)
-    cc = SimpleNamespace(latActive=True)
+    cc = SimpleNamespace(enabled=False, latActive=True)
     cs = SimpleNamespace(canfd_relay_open=True)
     assert lane_path.canfd_lane_render_allowed(cp, cc, cs)
 
   def test_longitudinal_control_still_renders(self):
     cp = SimpleNamespace(flags=HondaFlags.BOSCH_CANFD, openpilotLongitudinalControl=True)
-    cc = SimpleNamespace(latActive=False)
+    cc = SimpleNamespace(enabled=False, latActive=False)
     cs = SimpleNamespace(canfd_relay_open=False)
     assert lane_path.canfd_lane_render_allowed(cp, cc, cs)
 
-  def test_relay_closed_blocks_render_without_longitudinal_control(self):
+  def test_relay_closed_and_lka_off_blocks_render(self):
     cp = SimpleNamespace(flags=HondaFlags.BOSCH_CANFD, openpilotLongitudinalControl=False)
-    cc = SimpleNamespace(latActive=True)
+    cc = SimpleNamespace(enabled=False, latActive=False)
     cs = SimpleNamespace(canfd_relay_open=False)
     assert not lane_path.canfd_lane_render_allowed(cp, cc, cs)
 
