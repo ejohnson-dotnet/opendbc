@@ -119,14 +119,20 @@ def canfd_lane_offsets(dash_lane) -> list[int]:
 
 
 def canfd_lane_render_allowed(CP, CC, CS) -> bool:
-  """CAN FD lane-path/HUD look-alikes stay allowed while the dash is still meant to draw lanes.
+  """CAN FD lane-path/HUD look-alikes stay allowed while the dash still expects to draw lanes.
 
-  `CC.latActive` drops out when stock ACC / cruise state takes over the vehicle's longitudinal
-  behavior, but the dash still needs the lane draw while the lane-assist feature is enabled. A
-  relay-open fallback still matters for the stock-radar/no-camera path, but the primary gate is the
-  lane-assist-enabled state, not the active steering torque bit."""
+  On these cars the stock ACC state can take over while the car still has a valid lane image; the
+  render gate must not collapse just because `CC.latActive` is false. Keep the dash path alive while
+  openpilot is controlling longitudinally, lane assist is still enabled, or stock ACC is active. The
+  relay-open fallback still covers the camera-behind-relay case where the dash needs the look-alike
+  path to stay alive even without a live steering command."""
+  enabled = getattr(CC, "enabled", False)
+  lat_active = getattr(CC, "latActive", False)
+  cruise_state = getattr(getattr(CS, "out", None), "cruiseState", None)
+  cruise_enabled = bool(getattr(cruise_state, "enabled", False))
+  relay_open = bool(getattr(CS, "canfd_relay_open", False))
   return bool(CP.flags & HondaFlags.BOSCH_CANFD and
-              (CP.openpilotLongitudinalControl or CC.enabled or (CC.latActive and CS.canfd_relay_open)))
+              (CP.openpilotLongitudinalControl or enabled or cruise_enabled or (lat_active and relay_open)))
 
 
 def create_lane_path(packer, bus, offsets, mux):
