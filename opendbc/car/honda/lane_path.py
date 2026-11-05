@@ -238,11 +238,13 @@ class LanePathFitter:
       x, y, left_on, right_on = select_lane_render(model, self._left_on, self._right_on)
     if x is None:
       self._displayed = None
+      self._left_on = self._right_on = False
       return blank
     self._left_on, self._right_on = left_on, right_on
 
     reach = float(np.clip(max(v_ego / DASH_PATH_FULL_LEN_SPEED, lead_d / DASH_PATH_LEAD_FULL_DIST, DASH_PATH_MIN_REACH), 0.0, 1.0))
     if round(reach * LANE_LENGTH_MAX_VALUE) <= 0:
       self._displayed = None
+      self._left_on = self._right_on = False
       return blank
     return DashLane(self._slew(encode_lane_path(x, y, canfd)), reach, left_on, right_on, v_ego=v_ego)
