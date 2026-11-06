@@ -132,6 +132,12 @@ class TestCanfdLaneRender(unittest.TestCase):
     cs = SimpleNamespace(canfd_relay_open=False, out=SimpleNamespace(cruiseState=SimpleNamespace(enabled=True)))
     assert lane_path.canfd_lane_render_allowed(cp, cc, cs)
 
+  def test_stock_radar_alive_keeps_dash_rendering_without_cruise_state(self):
+    cp = SimpleNamespace(flags=HondaFlags.BOSCH_CANFD, openpilotLongitudinalControl=False)
+    cc = SimpleNamespace(enabled=False, latActive=False)
+    cs = SimpleNamespace(canfd_relay_open=False, stock_acc_alive=True)
+    assert lane_path.canfd_lane_render_allowed(cp, cc, cs)
+
   def test_relay_closed_and_lka_off_blocks_render(self):
     cp = SimpleNamespace(flags=HondaFlags.BOSCH_CANFD, openpilotLongitudinalControl=False)
     cc = SimpleNamespace(enabled=False, latActive=False)
