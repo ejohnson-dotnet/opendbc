@@ -1357,12 +1357,12 @@ class CarController(CarControllerBase, MadsCarController, GasInterceptorCarContr
       can_sends.append(lane_path.create_lkas_hud_2(self.packer, self.CAN.lkas, (self.frame // 20 - 1) % 4,
                                                    dl.reach, dl.lane_cross, dl.left_line, dl.right_line))
 
-    # Radarless + CAN FD: when stock LKAS is active, the touch-steering-wheel timer/nag eventually forces an ACC
-    # disengagement (on CAN FD it shows up as a brake tap from the VSA). Disable LKAS automatically and block the
-    # driver's LKAS button from reaching the camera by taking over SCM_BUTTONS on the camera bus while engaged
+    # Radarless: when stock LKAS is active, the touch-steering-wheel timer/nag eventually forces an ACC disengagement.
+    # Disable LKAS automatically and block the driver's LKAS button from reaching the camera by taking over SCM_BUTTONS
+    # on the camera bus while engaged
     # (panda blocks the forwarded stock SCM_BUTTONS when engaged; the standard button spamming isn't reliably
     # accepted by the camera).
-    if self.CP.flags & (HondaFlags.BOSCH_RADARLESS | HondaFlags.BOSCH_CANFD) and CC.enabled and self.frame % 4 == 0 and \
+    if self.CP.flags & HondaFlags.BOSCH_RADARLESS and CC.enabled and self.frame % 4 == 0 and \
         not pcm_cancel_cmd and not CC.cruiseControl.resume:
       if self.lkas_button_send_remaining == 0 and CS.lkas_hud["LKAS_READY"] and self.frame >= self.last_lkas_button_frame + 500:
         self.lkas_button_send_remaining = 3
